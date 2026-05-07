@@ -9,8 +9,7 @@ def flutterVersionName = '1.0'
 
 android {
     namespace = "com.adwa.companion"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 34
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -24,8 +23,8 @@ android {
     defaultConfig {
         applicationId = "com.adwa.companion"
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutterVersionCode.toInteger()
+        targetSdk = 34
+        versionCode = 1
         versionName = flutterVersionName
     }
 
