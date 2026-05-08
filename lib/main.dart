@@ -222,11 +222,11 @@ class _MainScreenState extends State<_MainScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Tap eye for data  •  Double-tap for Telegram',
+                'Tap for dashboard  •  Double-tap → Telegram bot',
                 style: TextStyle(color: Colors.white24, fontSize: 11, fontFamily: 'monospace'),
               ),
               Text(
-                'Drag to reposition  •  Auto-wanders',
+                'Drag to move  •  ✕ appears to close overlay',
                 style: TextStyle(color: Colors.white24, fontSize: 11, fontFamily: 'monospace'),
               ),
             ],
