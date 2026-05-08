@@ -223,9 +223,9 @@ class OverlayService : Service() {
         private var pupilAnimPhase = 0f
         private var pupilRunnable: Runnable? = null
 
-        // View: 400px eye + 40px compact data bar
-        private val viewSize = 400
-        private val barHeight = 40
+        // View: 480px eye + 36px compact data bar
+        private val viewSize = 480
+        private val barHeight = 36
 
         init {
             setBackgroundColor(Color.TRANSPARENT)
@@ -422,19 +422,18 @@ class OverlayService : Service() {
             paint.style = Paint.Style.FILL
             paint.typeface = Typeface.MONOSPACE
             paint.maskFilter = null
-            val barY = viewSize + barHeight / 2f + 5f
+            val barY = viewSize + barHeight / 2f + 4f
             
             val dirIcon = when (direction) { "up" -> "▲" ; "down" -> "▼" ; else -> "—" }
-            val line = "$dirIcon SOL $$solPrice  |  EQ $$equity  |  🔋$battery% ${temperature.toInt()}°C"
+            // Compact: icon + SOL + equity + battery on one line
+            val line = "$dirIcon  \$$solPrice  \$$equity  🔋$battery%"
             
-            paint.textSize = spToPx(11f)
+            paint.textSize = spToPx(12f)
             paint.color = glowColor
-            paint.alpha = 220
-            // Draw the direction icon separately in glow color
+            paint.alpha = 230
             canvas.drawText(dirIcon, 8f, barY, paint)
-            // Rest of text in white
-            paint.color = Color.argb(200, 255, 255, 255)
-            canvas.drawText(" SOL $$solPrice  |  EQ $$equity  |  🔋$battery% ${temperature.toInt()}°C", 
+            paint.color = Color.argb(210, 255, 255, 255)
+            canvas.drawText("  \$$solPrice  \$$equity  🔋$battery% ${temperature.toInt()}°C", 
                 8f + paint.measureText(dirIcon + " "), barY, paint)
 
             // ── Data popup (on tap) ──
@@ -493,11 +492,11 @@ class OverlayService : Service() {
                 dataRow(canvas, "Temp", "${temperature.toInt()}°C", "", ppx + 16f, ppy + 168f, Color.WHITE)
             }
 
-            // ── Close button (appears after drag) ──
+            // ── Close button (top-right corner, inside view) ──
             if (showClose && closeAlpha > 0.01f) {
-                val closeSize = 48f
-                val closeCx = w + 10f
-                val closeCy = -10f
+                val closeSize = 44f
+                val closeCx = viewSize - closeSize/2f - 4f
+                val closeCy = closeSize/2f + 4f
 
                 // Circle background
                 paint.style = Paint.Style.FILL
@@ -570,8 +569,8 @@ class OverlayService : Service() {
                         // Check if close button was tapped
                         val relX = event.x
                         val relY = event.y
-                        val closeCx = width + 10f
-                        val closeCy = -10f
+                        val closeCx = viewSize - 22f - 4f
+                        val closeCy = 22f + 4f
                         val closeRad = 24f
                         val distToClose = sqrt((relX - closeCx).pow(2) + (relY - closeCy).pow(2))
 
