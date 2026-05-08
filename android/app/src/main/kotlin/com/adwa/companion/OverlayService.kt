@@ -78,28 +78,24 @@ class OverlayService : Service() {
     }
 
     private fun showOverlay() {
-        try {
-            eyeView = EyeView(this)
-            params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT
-            )
-            params.gravity = Gravity.TOP or Gravity.START
-            params.x = 80
-            params.y = 400
-            wm.addView(eyeView, params)
-            startBlinks()
-        } catch (e: Exception) {
-            stopSelf()
-        }
+        eyeView = EyeView(this)
+        params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+        params.x = 80
+        params.y = 400
+        wm.addView(eyeView, params)
+        startBlinks()
     }
 
     private fun stopOverlay() {
@@ -227,13 +223,11 @@ class OverlayService : Service() {
         private var pupilAnimPhase = 0f
         private var pupilRunnable: Runnable? = null
 
-        // View size — 220dp for readability
-        private val eyeSizePx: Int
-            get() = (220 * resources.displayMetrics.density).toInt()
+        // View size — hardcoded 600px for reliability across devices
+        private val eyeSizePx = 600
 
         init {
             setBackgroundColor(Color.TRANSPARENT)
-            startPupilIdle()
         }
 
         override fun onAttachedToWindow() {

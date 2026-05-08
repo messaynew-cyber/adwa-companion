@@ -86,10 +86,9 @@ class _AdwaCompanionAppState extends State<AdwaCompanionApp> {
       final ok = await _channel.invokeMethod<bool>('startOverlay');
       if (ok == true) {
         setState(() => _overlayActive = true);
-        // Dismiss the app so overlay shows on home screen
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _channel.invokeMethod('dismissApp');
-        });
+      } else {
+        // Permission might have been revoked or overlay failed
+        setState(() => _hasPermission = false);
       }
     }
   }
