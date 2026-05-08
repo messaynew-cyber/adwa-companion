@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.*
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.animation.ValueAnimator
@@ -19,8 +18,6 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.ImageView
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -147,45 +144,51 @@ class OverlayService : Service() {
                     }, delay * i)
                 }
 
-                handler.postDelayed(this, 6000 + Random().nextInt(8000).toLong())
+                handler.postDelayed(this, 20000 + Random().nextInt(15000).toLong())
             }
         }
         handler.postDelayed(moveRunnable!!, 4000)
     }
 
     private fun startPolling() {
+        // Fetch immediately, then every 30s
+        fetchData()
         pollRunnable = object : Runnable {
             override fun run() {
-                thread {
-                    try {
-                        val conn = URL(API_URL).openConnection() as HttpURLConnection
-                        conn.connectTimeout = 5000
-                        conn.readTimeout = 5000
-                        val text = conn.inputStream.bufferedReader().readText()
-                        conn.disconnect()
-                        val json = JSONObject(text)
-                        val mkts = json.optJSONObject("markets") ?: return@thread
-                        val sol = mkts.optJSONObject("sol") ?: return@thread
-                        val pf = json.optJSONObject("portfolio") ?: return@thread
-                        val sys = json.optJSONObject("system") ?: return@thread
-
-                        solPrice = sol.optDouble("price", 0.0)
-                        solChange = sol.optDouble("change_24h", 0.0)
-                        equity = pf.optDouble("equity", 0.0)
-                        direction = sol.optString("direction", "flat")
-                        battery = sys.optInt("battery", 100)
-                        temperature = sys.optDouble("temperature", 0.0)
-
-                        handler.post {
-                            eyeView.updateGlow(direction)
-                            eyeView.invalidate()
-                        }
-                    } catch (_: Exception) {}
-                }
+                fetchData()
                 handler.postDelayed(this, 30000)
             }
         }
-        handler.post(pollRunnable!!)
+        handler.postDelayed(pollRunnable!!, 30000)
+    }
+
+    private fun fetchData() {
+        thread {
+            try {
+                val conn = URL(API_URL).openConnection() as HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val text = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                val json = JSONObject(text)
+                val mkts = json.optJSONObject("markets") ?: return@thread
+                val sol = mkts.optJSONObject("sol") ?: return@thread
+                val pf = json.optJSONObject("portfolio") ?: return@thread
+                val sys = json.optJSONObject("system") ?: return@thread
+
+                solPrice = sol.optDouble("price", 0.0)
+                solChange = sol.optDouble("change_24h", 0.0)
+                equity = pf.optDouble("equity", 0.0)
+                direction = sol.optString("direction", "flat")
+                battery = sys.optInt("battery", 100)
+                temperature = sys.optDouble("temperature", 0.0)
+
+                handler.post {
+                    eyeView.updateGlow(direction)
+                    eyeView.invalidate()
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun createNotificationChannel() {
@@ -234,8 +237,27 @@ class OverlayService : Service() {
         private var initY = 0
         private var lastTapTime = 0L
 
+        // Data popup state
+        private var showPopup = false
+        private var popupAlpha = 0f
+        private var popupFadeRunnable: Runnable? = null
+
         init {
             setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        private fun showDataPopup() {
+            popupFadeRunnable?.let { handler.removeCallbacks(it) }
+            showPopup = true
+            popupAlpha = 1f
+            invalidate()
+            // Auto-hide after 2.5 seconds
+            popupFadeRunnable = Runnable {
+                showPopup = false
+                popupAlpha = 0f
+                invalidate()
+            }
+            handler.postDelayed(popupFadeRunnable!!, 2500)
         }
 
         fun blink() {
@@ -346,6 +368,41 @@ class OverlayService : Service() {
             canvas.drawText(solText, cx + 8f, textY - 2f, paint)
             canvas.drawText(eqText, cx + 8f, textY + 14f, paint)
             canvas.drawText("🔋$battery%", cx + 8f, textY + 30f, paint)
+
+            // Data popup on tap
+            if (showPopup && popupAlpha > 0.01f) {
+                val popupW = 220f
+                val popupH = 80f
+                val popupX = cx - popupW / 2
+                val popupY = -20f // above the eye
+
+                // Background
+                paint.style = Paint.Style.FILL
+                paint.color = Color.argb((200 * popupAlpha).toInt(), 7, 7, 13)
+                paint.maskFilter = null
+                val bgRect = RectF(popupX, popupY, popupX + popupW, popupY + popupH)
+                canvas.drawRoundRect(bgRect, 12f, 12f, paint)
+
+                // Border
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1.5f
+                paint.color = Color.argb((100 * popupAlpha).toInt(), 
+                    Color.red(glowColor), Color.green(glowColor), Color.blue(glowColor))
+                canvas.drawRoundRect(bgRect, 12f, 12f, paint)
+
+                // Text
+                paint.style = Paint.Style.FILL
+                paint.typeface = Typeface.MONOSPACE
+                paint.textSize = spToPx(11f)
+                val dirStr = when (direction) { "up" -> "▲ UP" ; "down" -> "▼ DOWN" ; else -> "— FLAT" }
+                paint.color = glowColor
+                paint.alpha = (220 * popupAlpha).toInt()
+                canvas.drawText(dirStr, popupX + 10f, popupY + 20f, paint)
+                paint.color = Color.argb((200 * popupAlpha).toInt(), 255, 255, 255)
+                canvas.drawText("SOL: $$solPrice", popupX + 10f, popupY + 38f, paint)
+                canvas.drawText("Equity: $$equity  🔋$battery%", popupX + 10f, popupY + 54f, paint)
+                canvas.drawText("Tap for data • Dbl-tap TG", popupX + 10f, popupY + 72f, paint)
+            }
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -377,22 +434,10 @@ class OverlayService : Service() {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AdwaAuditor"))
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 startActivity(intent)
-                            } catch (_: Exception) {
-                                Toast.makeText(this@OverlayService, "Telegram not available", Toast.LENGTH_SHORT).show()
-                            }
+                            } catch (_: Exception) {}
                         } else {
                             lastTapTime = now
-                            // Single tap → show mini data toast
-                            val dir = when (direction) {
-                                "up" -> "▲ UP"
-                                "down" -> "▼ DOWN"
-                                else -> "— FLAT"
-                            }
-                            Toast.makeText(
-                                this@OverlayService,
-                                "SOL: $$solPrice ($dir) | Equity: $$equity | 🔋 $battery%",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            showDataPopup()
                             blink()
                         }
                     }
