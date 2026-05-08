@@ -223,8 +223,9 @@ class OverlayService : Service() {
         private var pupilAnimPhase = 0f
         private var pupilRunnable: Runnable? = null
 
-        // View size — hardcoded 600px for reliability across devices
-        private val eyeSizePx = 600
+        // View: 400px eye + 40px compact data bar
+        private val viewSize = 400
+        private val barHeight = 40
 
         init {
             setBackgroundColor(Color.TRANSPARENT)
@@ -297,14 +298,13 @@ class OverlayService : Service() {
         private fun spToPx(sp: Float): Float = sp * resources.displayMetrics.scaledDensity
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val size = eyeSizePx
-            setMeasuredDimension(size, size)
+            setMeasuredDimension(viewSize, viewSize + barHeight)
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
+            val w = viewSize.toFloat()
+            val h = viewSize.toFloat()  // eye area only
             val cx = w / 2f
             val cy = h / 2f
             val rx = w * 0.32f
@@ -418,28 +418,24 @@ class OverlayService : Service() {
                 canvas.drawRect(RectF(0f, cy + ry - lidH * 0.5f, w, lidH + ry), paint)
             }
 
-            // ── Compact data line below eye ──
+            // ── Compact data bar below eye ──
             paint.style = Paint.Style.FILL
             paint.typeface = Typeface.MONOSPACE
             paint.maskFilter = null
-            val textY = h - 10f
-
-            val solText = "SOL $$solPrice"
-            val eqText = "EQ $$equity"
-            val dirIcon = when (direction) {
-                "up" -> "▲" ; "down" -> "▼" ; else -> "—"
-            }
-
-            paint.textSize = spToPx(13f)
+            val barY = viewSize + barHeight / 2f + 5f
+            
+            val dirIcon = when (direction) { "up" -> "▲" ; "down" -> "▼" ; else -> "—" }
+            val line = "$dirIcon SOL $$solPrice  |  EQ $$equity  |  🔋$battery% ${temperature.toInt()}°C"
+            
+            paint.textSize = spToPx(11f)
             paint.color = glowColor
             paint.alpha = 220
-            canvas.drawText(dirIcon, cx - rx * 1.1f, textY, paint)
-
+            // Draw the direction icon separately in glow color
+            canvas.drawText(dirIcon, 8f, barY, paint)
+            // Rest of text in white
             paint.color = Color.argb(200, 255, 255, 255)
-            paint.textSize = spToPx(12f)
-            canvas.drawText(solText, cx - rx * 0.7f, textY - 3f, paint)
-            canvas.drawText(eqText, cx - rx * 0.7f, textY + 15f, paint)
-            canvas.drawText("🔋$battery%  ${temperature.toInt()}°C", cx - rx * 0.7f, textY + 33f, paint)
+            canvas.drawText(" SOL $$solPrice  |  EQ $$equity  |  🔋$battery% ${temperature.toInt()}°C", 
+                8f + paint.measureText(dirIcon + " "), barY, paint)
 
             // ── Data popup (on tap) ──
             if (showPopup) {
